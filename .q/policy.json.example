@@ -1,0 +1,14 @@
+{
+  "deny": [
+    ".env",
+    ".env.*",
+    "*.pem",
+    "*.key",
+    "*credentials*",
+    "*secret*",
+    "*token*"
+  ],
+  "allow": [],
+  "maxBytes": 1048576,
+  "maxResults": 8
+}
