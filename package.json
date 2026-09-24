@@ -1,0 +1,37 @@
+{
+  "name": "q-context-firewall",
+  "version": "0.1.0",
+  "description": "Local-first context firewall for safe, deterministic, verifiable AI context.",
+  "type": "module",
+  "bin": {
+    "q": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "tsx --test tests/*.test.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "ai",
+    "llm",
+    "context",
+    "provenance",
+    "privacy",
+    "security",
+    "retrieval",
+    "developer-tools",
+    "local-first"
+  ],
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
