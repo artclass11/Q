@@ -18,7 +18,7 @@ button,input,select,textarea{font:inherit}.wrap{max-width:1180px;margin:auto;pad
 </head>
 <body>
 <div class="wrap">
-<nav class="nav"><div class="brand"><div class="logo">Au</div>AuroMix</div><div class="actions"><button class="btn" id="reset">Reset</button><button class="btn primary" id="export">Export</button></div></nav>
+<nav class="nav"><div class="brand"><div class="logo">Au</div>AuroMix</div><div class="actions"><button class="btn" id="reset">Reset</button><button class="btn primary" id="export">Export PDF</button></div></nav>
 
 <section class="hero">
 <div class="card hero-copy"><div class="eyebrow">ALLOY LAB • COMPOSITION • PROCESS</div><h1>Design the alloy.</h1><p>Set purity, colour, metals and process. See the result live.</p><div class="tiny">Design screen only. Validate before production.</div></div>
@@ -155,7 +155,29 @@ function render(){
 }
 ["use","family","process","atmosphere"].forEach(id=>$(id).addEventListener("change",e=>{state[id]=e.target.value;render()}));["au","temp","time"].forEach(id=>$(id).addEventListener("input",e=>{state[id]=+e.target.value;render()}));
 $("reset").onclick=()=>{Object.assign(state,{Au:75,Ag:12.5,Cu:12.5,Zn:0,Pd:0,Pt:0,Ni:0,Mn:0,Sn:0,In:0,Si:0,Fe:0,Al:0,Ga:0,Ti:0,use:"bar",family:"yellow",process:"cast",atmosphere:"Air",temp:750,time:30,brief:""});$("brief").value="";render()};
-$("export").onclick=()=>{const c=calc();const data={product:"AuroMix",brief:$("brief").value,use_case:state.use,target_family:state.family,composition_percent:Object.fromEntries(Object.entries(state).filter(([k])=>k==="Au"||META[k]).map(([k,v])=>[k,+v.toFixed(3)])),estimated:{karat:+(state.Au/100*24).toFixed(3),fineness_per_thousand:Math.round(state.Au*10),color_family:c.family,relative_strength:Math.round(c.strength),warmth:Math.round(c.warmth),brightness:Math.round(c.brightness),processability:Math.round(c.proc),heat_sensitivity:Math.round(c.heat)},process:{method:state.process,atmosphere:state.atmosphere,planned_heat_c:state.temp,hold_minutes:state.time},note:"Design-screening output only. Validate exact chemistry, melting behavior, mechanical properties and production process with certified alloy data before manufacturing."};const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:"application/json"}));a.download="auromix-recipe.json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+function escapeHTML(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]))}
+function exportPDF(){
+ const c=calc();
+ const karat=(state.Au/100*24).toFixed(2);
+ const composition=Object.entries(state).filter(([k,v])=>(k==="Au"||META[k])&&v>0);
+ const rows=composition.map(([k,v])=>\`<tr><td><b>\${escapeHTML(k)}</b></td><td>\${(+v).toFixed(2)}</td><td>\${escapeHTML(k==="Au"?"Base precious metal":META[k].role)}</td><td>\${escapeHTML(k==="Au"?"yellow / rich":META[k].color)}</td></tr>\`).join("");
+ const stamp=new Date().toLocaleString();
+ const title=(\`\${karat}K · \${c.family}\`);
+ const report=\`<!doctype html><html><head><meta charset="utf-8"><title>AuroMix PDF Report</title><style>
+ @page{size:A4;margin:16mm}*{box-sizing:border-box}body{margin:0;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif}main{max-width:760px;margin:auto}header{border-bottom:2px solid #111;padding-bottom:18px;margin-bottom:22px}.brand{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:800}.title{font-size:34px;letter-spacing:-.03em;margin:22px 0 6px}.muted{color:#666;font-size:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}.box{border:1px solid #d8d8d8;padding:12px;border-radius:8px}.label{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#666}.value{font-size:17px;font-weight:700;margin-top:4px}.swatch{height:46px;border:1px solid #222;border-radius:8px;margin-top:8px;background:\${c.hex}}h2{font-size:14px;text-transform:uppercase;letter-spacing:.1em;margin:26px 0 10px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{padding:8px 6px;border-bottom:1px solid #ddd;text-align:left}th{text-transform:uppercase;font-size:8px;letter-spacing:.08em;color:#666}.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}.metric{border:1px solid #ddd;padding:10px;border-radius:8px}.metric b{display:block;font-size:15px}.metric span{display:block;color:#666;font-size:8px;margin-top:4px;text-transform:uppercase}.process{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.note{border-top:1px solid #ddd;margin-top:24px;padding-top:12px;color:#555;font-size:10px;line-height:1.5}.footer{margin-top:30px;border-top:2px solid #111;padding-top:10px;font-size:8px;color:#777;display:flex;justify-content:space-between}@media print{body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}\</style></head><body><main>
+<header><div class="brand">AuroMix Studio · Alloy Lab</div><div class="title">Material Report</div><div class="muted">\${escapeHTML(title)} · Generated \${escapeHTML(stamp)}</div></header>
+<div class="grid"><div class="box"><div class="label">Brief</div><div class="value">\${escapeHTML($("brief").value||"—")}</div></div><div class="box"><div class="label">Use</div><div class="value">\${escapeHTML(state.use)}</div></div><div class="box"><div class="label">Colour family</div><div class="value">\${escapeHTML(c.family)}</div><div class="swatch" title="\${escapeHTML(c.hex)}"></div></div><div class="box"><div class="label">Fineness</div><div class="value">\${Math.round(state.Au*10)}‰</div></div></div>
+<h2>Composition</h2><table><thead><tr><th>Element</th><th>%</th><th>Role</th><th>Colour</th></tr></thead><tbody>\${rows}</tbody></table>
+<h2>Live indicators</h2><div class="metrics"><div class="metric"><b>\${Math.round(c.warmth)}%</b><span>Warmth</span></div><div class="metric"><b>\${Math.round(c.brightness)}%</b><span>Brightness</span></div><div class="metric"><b>\${Math.round(c.strength)}%</b><span>Wear</span></div><div class="metric"><b>\${Math.round(c.proc)}%</b><span>Processability</span></div><div class="metric"><b>\${Math.round(c.heat)}%</b><span>Heat sensitivity</span></div></div>
+<h2>Process</h2><div class="process"><div class="box"><div class="label">Method</div><div class="value">\${escapeHTML(state.process)}</div></div><div class="box"><div class="label">Atmosphere</div><div class="value">\${escapeHTML(state.atmosphere)}</div></div><div class="box"><div class="label">Heat</div><div class="value">\${state.temp}°C</div></div><div class="box"><div class="label">Hold</div><div class="value">\${state.time} min</div></div></div>
+<div class="note"><b>Design-screening output only.</b> This report is a concept aid, not a production certificate. Validate exact chemistry, melting behaviour, mechanical properties, colour tolerance, safety, and manufacturing process with certified alloy data before production.</div>
+<div class="footer"><span>AuroMix · minimal alloy design report</span><span>\${escapeHTML(stamp)}</span></div>
+</main><script>window.onload=()=>setTimeout(()=>window.print(),180)<\/script></body></html>\`;
+ const w=window.open("","_blank","noopener,noreferrer");
+ if(!w){alert("Please allow pop-ups to export the PDF.");return}
+ w.document.open();w.document.write(report);w.document.close();
+}
+$("export").onclick=exportPDF;
 render();
 </script>
 </body>
