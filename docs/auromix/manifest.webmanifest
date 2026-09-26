@@ -1,0 +1,9 @@
+{
+  "name": "AuroMix Studio",
+  "short_name": "AuroMix",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#070808",
+  "theme_color": "#080909",
+  "description": "Interactive gold-alloy concept lab for jewelry teams."
+}
