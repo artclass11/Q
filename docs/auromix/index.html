@@ -191,16 +191,17 @@ function exportPDF(){
  const rows=Object.entries(state).filter(([k,v])=>(k==="Au"||META[k])&&v>0);
  const steps=processPlan();
  const clean=s=>String(s??"").replace(/\s+/g," ").trim()||"—";
- function header(title){
+ function header(title,sub=""){
    doc.setTextColor(17,17,17);doc.setDrawColor(17,17,17);doc.setLineWidth(.6);doc.line(M,y,W-M,y);y+=7;
-   doc.setFont("helvetica","bold");doc.setFontSize(9);doc.text("AUROMIX STUDIO · ALLOY LAB",M,y);y+=9;
-   doc.setFontSize(23);doc.text(title,M,y);y+=6;
-   doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(95,95,95);doc.text(karat+"K · "+c.family+" · "+stamp,M,y);y+=8;
+   doc.setFont("helvetica","bold");doc.setFontSize(9);doc.text("AUROMIX STUDIO · PREMIUM MATERIAL REPORT",M,y);y+=9;
+   doc.setFontSize(22);doc.text(title,M,y);y+=6;
+   doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(95,95,95);
+   doc.text(karat+"K · "+c.family+" · "+stamp,M,y); if(sub) doc.text(sub,W-M,y,{align:"right"}); y+=8;
  }
- function footer(){doc.setDrawColor(17,17,17);doc.setLineWidth(.6);doc.line(M,283,W-M,283);doc.setFontSize(7);doc.setTextColor(110,110,110);doc.text("AuroMix · design screening report",M,288);doc.text("Page "+page,W-M,288,{align:"right"})}
- function newPage(title){footer();doc.addPage();page++;y=16;header(title)}
+ function footer(){doc.setDrawColor(17,17,17);doc.setLineWidth(.6);doc.line(M,283,W-M,283);doc.setFontSize(7);doc.setTextColor(110,110,110);doc.text("AuroMix · practical production / QC screening report",M,288);doc.text("Page "+page,W-M,288,{align:"right"})}
+ function newPage(title,sub=""){footer();doc.addPage();page++;y=16;header(title,sub)}
  function section(t){
-   if(y>265)newPage("Material + Process Report");
+   if(y>266)newPage("Premium Manufacturing Report");
    doc.setTextColor(17,17,17);doc.setFont("helvetica","bold");doc.setFontSize(11);doc.text(t,M,y);y+=6;
  }
  function box(x,w,label,value){
@@ -208,76 +209,147 @@ function exportPDF(){
    doc.setFont("helvetica","normal");doc.setFontSize(6.8);doc.setTextColor(100,100,100);doc.text(label.toUpperCase(),x+4,y+5);
    doc.setFont("helvetica","bold");doc.setFontSize(10.5);doc.setTextColor(20,20,20);doc.text(clean(value).slice(0,48),x+4,y+12);
  }
- header("Material + Process Report");
- box(M,87,"Brief",clean($("brief").value));box(M+91,87,"Use",state.use);y+=23;
+ function paragraph(txt,w=C,fs=7.7){
+   doc.setFont("helvetica","normal");doc.setFontSize(fs);doc.setTextColor(65,65,65);
+   const lines=doc.splitTextToSize(clean(txt),w);doc.text(lines,M,y);y+=lines.length*(fs*.56)+4;
+ }
+ function bullet(txt,indent=7){
+   doc.setFont("helvetica","normal");doc.setFontSize(7.7);doc.setTextColor(65,65,65);
+   const lines=doc.splitTextToSize(clean(txt),C-indent-5);doc.circle(M+1.5,y-1.7,1.2,"S");doc.text(lines,M+indent,y);y+=lines.length*4.3+3;
+ }
+ function tableRows(headers,data,widths){
+   doc.setFont("helvetica","bold");doc.setFontSize(7);doc.setTextColor(90,90,90);
+   let x=M;headers.forEach((h,i)=>{doc.text(h,x,y);x+=widths[i]});y+=4;doc.setDrawColor(210,210,210);doc.line(M,y,W-M,y);y+=4;
+   data.forEach(r=>{
+     const maxLines=Math.max(...r.map((v,i)=>doc.splitTextToSize(clean(v),widths[i]-2).length));
+     const h=Math.max(5,maxLines*3.9)+2;
+     if(y+h>277){newPage("Practical QC Detail");tableRows(headers.slice(0),[],widths)}
+     let xx=M;doc.setFont("helvetica","normal");doc.setFontSize(7.2);doc.setTextColor(40,40,40);
+     r.forEach((v,i)=>{doc.text(doc.splitTextToSize(clean(v),widths[i]-2),xx,y);xx+=widths[i]});y+=h;
+   });
+   y+=3;
+ }
+ header("Premium Material + Process Report","CONFIGURED");
+ box(M,87,"Brief",clean($("brief").value));box(M+91,87,"Product use",state.use);y+=23;
  box(M,87,"Colour family",c.family);box(M+91,87,"Fineness",Math.round(state.Au*10)+"‰");y+=23;
  doc.setFillColor(parseInt(c.hex.slice(1,3),16),parseInt(c.hex.slice(3,5),16),parseInt(c.hex.slice(5,7),16));doc.roundedRect(M,y,C,10,2,2);doc.setTextColor(255,255,255);doc.setFontSize(7);doc.text("LIVE MATERIAL COLOUR  "+c.hex,M+4,y+6);y+=16;
- section("Composition");
- doc.setFontSize(7);doc.setFont("helvetica","bold");doc.setTextColor(100,100,100);
- doc.text("ELEMENT",M,y);doc.text("%",M+28,y);doc.text("ROLE",M+48,y);doc.text("COLOUR",M+125,y);y+=4;doc.setDrawColor(210,210,210);doc.line(M,y,W-M,y);y+=5;
- doc.setFont("helvetica","normal");doc.setTextColor(25,25,25);
- rows.forEach(([k,v])=>{if(y>270){newPage("Material + Process Report");section("Composition — continued")}doc.setFontSize(7.6);doc.text(k,M,y);doc.text((+v).toFixed(2),M+28,y);doc.text(clean(k==="Au"?"Base precious metal":META[k].role).slice(0,42),M+48,y);doc.text(clean(k==="Au"?"yellow / rich":META[k].color).slice(0,28),M+125,y);y+=5});
- y+=4;section("Live indicators");
- const mets=[["Warmth",c.warmth],["Brightness",c.brightness],["Wear",c.strength],["Processability",c.proc],["Heat sensitivity",c.heat]];
- const bw=(C-8)/5;mets.forEach((m,i)=>{const x=M+i*(bw+2);box(x,bw,m[0],Math.round(m[1])+"%")});y+=24;
- section("Selected process");
+ section("1 · Composition");
+ tableRows(["ELEMENT","%","ROLE","COLOUR"],rows.map(([k,v])=>[k,(+v).toFixed(2),k==="Au"?"Base precious metal":META[k].role,k==="Au"?"yellow / rich":META[k].color]),[28,20,77,63]);
+ section("2 · Live material indicators");
+ const mets=[["Warmth",c.warmth],["Brightness",c.brightness],["Wear",c.strength],["Processability",c.proc],["Heat sensitivity",c.heat]],bw=(C-8)/5;
+ mets.forEach((m,i)=>{const x=M+i*(bw+2);box(x,bw,m[0],Math.round(m[1])+"%")});y+=24;
+ section("3 · Selected process");
  box(M,42,"Method",processLabel);box(M+46,42,"Atmosphere",state.atmosphere);box(M+92,42,"Planned heat",state.temp+"°C");box(M+138,42,"Hold",state.time+" min");y+=24;
- section("Process breakdown");
+ section("4 · Process breakdown");
  steps.forEach(([n,t,d])=>{
-   const lines=doc.splitTextToSize(clean(d),C-28);
-   const h=10+lines.length*4.5;
+   const lines=doc.splitTextToSize(clean(d),C-28),h=10+lines.length*4.5;
    if(y+h>276)newPage("Process Breakdown");
    doc.setDrawColor(225,225,225);doc.setLineWidth(.25);doc.line(M,y,W-M,y);
    doc.setFont("helvetica","bold");doc.setFontSize(8);doc.setTextColor(100,100,100);doc.text(n,M,y+6);
    doc.setFontSize(8.2);doc.setTextColor(20,20,20);doc.text(clean(t).toUpperCase(),M+12,y+5);
-   doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.setTextColor(65,65,65);doc.text(lines,M+12,y+10);
-   y+=h+3;
+   doc.setFont("helvetica","normal");doc.setFontSize(7.5);doc.setTextColor(65,65,65);doc.text(lines,M+12,y+10);y+=h+3;
  });
- if(y>245)newPage("Technical Detail");
- section("Chemistry + alloy behaviour");
- const chemistry = [
-  ["Base metal","Gold (Au)","Primary precious-metal basis; fineness sets the overall gold content and strongly influences colour, density and workability."],
-  ["Colour balance","Au–Ag–Cu","Silver generally shifts yellow toward paler/greenish tones; copper increases warmth and red/rose character. Colour response is composition- and microstructure-dependent."],
-  ["White systems","Pd / Pt / Ni / Mn","White-gold systems can use different bleaching/hardening strategies. Skin-contact and regulatory requirements must be checked for the selected market."],
-  ["Minor additions","Zn / Si / Sn / In","Small additions can influence fluidity, oxidation control, grain behaviour or joining performance. They should be validated for the actual supplier alloy."],
+ if(y>250)newPage("Practical Finalization");
+ section("5 · Practical finalization SOP");
+ paragraph("Use this as the shop-floor release sequence. The exact production recipe remains alloy-, equipment- and product-specific; record validated values in the batch record rather than treating this report as a universal processing recipe.");
+ const sop=[
+  ["01","Incoming material","Check supplier identity, certificate/lot, material cleanliness and weight. Quarantine anything untraceable or outside the purchase specification."],
+  ["02","Charge preparation","Match each component to the approved formula and batch ID. Use a calibrated balance and keep additions separately identified until charge verification is complete."],
+  ["03","Melt / form","Use the validated furnace/forming route for the selected alloy. Record atmosphere, observed condition, batch ID and any abnormal event."],
+  ["04","Casting / forming","Inspect for fill defects, shrinkage, porosity, cracks, seams, distortion and segregation before investing time in finish work."],
+  ["05","Intermediate condition","Where rolling, drawing, forging or heat treatment is used, record stage, reduction/operation, validated treatment and inspection result."],
+  ["06","Surface preparation","Flatten and prepare the substrate before polishing. Do not use heavy polishing to hide casting or forming defects."],
+  ["07","Final finish","Choose mirror, satin, brushed, matte or mixed finish from the product specification. Check uniformity under consistent lighting."],
+  ["08","Final inspection","Inspect edges, geometry, dimensions, surface, markings, setting/security and cleanliness under magnification appropriate to the product."],
+  ["09","Purity / assay","Confirm fineness using the appropriate analytical or assay route and reconcile the result with the batch record."],
+  ["10","Release","Assign final product/serial identity, issue QC/assay documentation, pack securely and record release approval."]
  ];
- chemistry.forEach(([a,b,d])=>{if(y>273){newPage("Technical Detail");section("Chemistry + alloy behaviour");}doc.setFont("helvetica","bold");doc.setFontSize(7.8);doc.setTextColor(25,25,25);doc.text(a,M,y);doc.setFont("helvetica","normal");doc.setTextColor(75,75,75);doc.text(b,M+38,y);const lines=doc.splitTextToSize(clean(d),C-78);doc.text(lines,M+78,y);y+=Math.max(5,lines.length*4.2)+3;});
- section("Equipment + process controls");
- const equipment = [
+ tableRows(["STEP","CONTROL POINT","PRACTICAL ACTION"],sop,[20,39,115]);
+ if(y>248)newPage("Jewellery Finishing");
+ section("6 · Premium jewellery finishing");
+ const jew=[
+  ["Geometry","Symmetry and silhouette","Compare left/right features, thickness, curves, edges and stone seats to the approved drawing or master."],
+  ["Pre-polish","Defect removal","Reject or repair visible pits, porosity, cracks, tool marks and deep scratches before final polishing."],
+  ["Mirror","Optical uniformity","Use consistent finishing media and inspect under directional light. Final surface should not show random micro-scratches or polishing waves."],
+  ["Satin / brush","Directional consistency","Keep stroke direction, density and boundary transitions uniform. Protect polished zones from stray abrasion."],
+  ["Stone setting","Security","Check alignment, seat fit, prong/contact symmetry, movement/rattle, sharp edges and cleanliness."],
+  ["Plating","Surface readiness","Plate only after substrate preparation and approved process validation. Verify coverage, adhesion and colour match."],
+  ["Final clean","Presentation","Remove residues, fingerprints and loose particles, then inspect the dry article under neutral, consistent lighting."],
+  ["Hallmark","Identity","For Indian hallmarked gold jewellery, plan the BIS hallmark/HUID workflow through the appropriate registered jeweller and recognised assaying/hallmarking channel."]
+ ];
+ tableRows(["AREA","ACCEPTANCE","PRACTICAL CHECK"],jew,[30,48,96]);
+ section("7 · Jewellery release checklist");
+ ["No visible casting / fabrication defect at agreed inspection level","Edges comfortable and free of unintended sharp points","Finish uniform across all exposed surfaces","Stone setting secure and aligned where applicable","Fineness and marking records reconciled","Hallmark/HUID handled through the applicable BIS route","Invoice / product record contains required product and purity details","Final cleaning and packaging completed"].forEach(bullet);
+ if(y>250)newPage("Bullion Bar Finishing");
+ section("8 · Premium bullion / cast bar finishing");
+ paragraph("For a commercial bar, prioritize verified weight/fineness, durable identity, clean surfaces and traceability over an unnecessarily mirror-polished appearance. LBMA Good Delivery requirements are a separate professional-market framework and do not automatically apply to every retail bar.");
+ const bar=[
+  ["Weight","Controlled + recorded","Use calibrated weighing equipment and retain the measured gross/net result according to the product specification."],
+  ["Dimensions","Within drawing","Measure length/width/height at defined points and record tolerance exceptions before release."],
+  ["Surface","Clean + defect controlled","Reject cavities, lumps, cracks or defects that compromise appearance, handling or identification. Avoid cosmetic rework that conceals defects."],
+  ["Edges","Safe + consistent","Remove accidental sharp projections while preserving the intended bar geometry."],
+  ["Marking","Permanent + readable","Apply refiner/product identity, fineness, serial and date information according to the applicable product/market specification."],
+  ["Traceability","One-to-one record","Link serial number to melt/batch, assay result, final weight, QC result and packaging record."],
+  ["Packaging","Tamper evident","Use a package appropriate to the product value and sales channel; preserve serial/identity visibility and chain-of-custody records."]
+ ];
+ tableRows(["AREA","RELEASE TARGET","PRACTICAL CHECK"],bar,[28,43,103]);
+ section("9 · Bar release checklist");
+ ["Final weight recorded against the product specification","Fineness/assay result attached to the batch record","Surface inspected before packaging; defects not concealed by burnishing","Serial/identity readable and linked to the internal batch record","Production date / other required marks checked","Certificate/assay documentation reconciled","Packaging serial/label matches the bar","Vault/transport handover records completed where applicable"].forEach(bullet);
+ if(y>248)newPage("Standards + Traceability");
+ section("10 · India + international standards notes");
+ paragraph("BIS states that hallmarking is the official recording of precious-metal content and lists IS 1417 for gold jewellery/artefacts, IS 1418 for gold assay by cupellation and IS 17278 for refined gold and silver bars for Good Delivery. BIS also states that hallmarked gold jewellery uses the BIS mark, purity/fineness and six-digit HUID under the current hallmarking scheme. Verify the latest BIS orders and applicable category before production or sale.");
+ paragraph("LBMA's Gold Good Delivery technical specifications require professional Good Delivery bars to meet defined weight, dimensions, fineness and marking requirements. LBMA also notes that excessive post-production polishing can affect safe stacking and says gold bars should have good appearance without defects being concealed by burnishing. These requirements apply to the Good Delivery programme, not automatically to all retail bars.");
+ section("11 · Traceability record template");
+ tableRows(["FIELD","RECORD"],[
+  ["Product / SKU",clean(karat+"K "+c.family+" "+state.use)],
+  ["Batch / melt ID","____________________________"],
+  ["Supplier / feed lots","____________________________"],
+  ["Target composition","See composition table above"],
+  ["Assay / fineness result","____________________________"],
+  ["QC inspector / date","____________________________"],
+  ["Final weight","____________________________"],
+  ["Serial / HUID / marking","____________________________"],
+  ["Packaging ID","____________________________"],
+  ["Release approval","____________________________"]
+ ],[58,136]);
+ if(y>248)newPage("Technical Detail");
+ section("12 · Chemistry + alloy behaviour");
+ const chemistry=[
+  ["Au base","Gold (Au)","Fineness sets the precious-metal fraction and strongly influences density, colour and workability."],
+  ["Colour balance","Au–Ag–Cu","Silver generally shifts yellow toward paler/greenish tones; copper increases warmth and red/rose character. Actual colour depends on composition and microstructure."],
+  ["White systems","Pd / Pt / Ni / Mn","Different white-gold systems use different bleaching/hardening strategies. Skin-contact and market requirements must be checked for the selected system."],
+  ["Minor additions","Zn / Si / Sn / In","Small additions can influence fluidity, oxidation control, grain behaviour or joining performance and must be validated on the actual alloy."],
+ ];
+ tableRows(["GROUP","EXAMPLES","PRACTICAL NOTE"],chemistry,[28,42,104]);
+ section("13 · Equipment + process controls");
+ [
   ["Material control","Certified feedstock, clean charge containers, calibrated balance and batch traceability."],
-  ["Melting / casting","Approved furnace, suitable crucible or melt system, mould/fixture appropriate to the alloy and extraction/ventilation controls."],
-  ["Forming","Rolling, drawing or forging equipment selected for the product geometry with dimensional checks between stages."],
-  ["Finishing","Surface-preparation, polishing/brushing or approved plating equipment matched to the substrate and target finish."],
-  ["Inspection","Fineness/composition verification, visual inspection, dimensional checks and documented acceptance criteria."],
- ];
- equipment.forEach(([a,d])=>{if(y>272){newPage("Equipment + Controls");section("Equipment + process controls");}doc.setFont("helvetica","bold");doc.setFontSize(7.8);doc.setTextColor(25,25,25);doc.text(a,M,y);doc.setFont("helvetica","normal");doc.setTextColor(75,75,75);doc.text(doc.splitTextToSize(clean(d),C-45),M+45,y);y+=10;});
- section("QA / QC checkpoints");
- const qc = [
-  "Incoming metal identity and supplier certificate checked against batch records.",
-  "Target composition/fineness confirmed by the appropriate assay or analytical method.",
-  "Colour compared under consistent lighting against the approved master/sample.",
-  "Casting/forming defects, porosity, cracks, segregation and surface defects inspected.",
-  "Dimensional and mechanical checks completed where required by the product specification.",
-  "Final finish, cleanliness, marking and traceability verified before release."
- ];
- qc.forEach(t=>{if(y>273){newPage("QA / QC");section("QA / QC checkpoints");}doc.setDrawColor(30,30,30);doc.rect(M,y-3,3.5,3.5);doc.setFont("helvetica","normal");doc.setFontSize(7.6);doc.setTextColor(65,65,65);doc.text(doc.splitTextToSize(clean(t),C-10),M+7,y);y+=7;});
- section("Use cases");
- const uses = [
-  ["Gold bar / bullion","Prioritize documented fineness, surface uniformity, dimensional tolerance and secure batch traceability."],
-  ["Jewellery / rings","Balance colour, wear resistance, workability and finishing requirements for the intended design."],
-  ["Casting","Focus on flow, fill quality, porosity control and repeatable downstream finishing."],
-  ["Sheet / wire","Use a deformation route with validated intermediate softening and dimensional control."],
-  ["Research alloys","Treat non-standard colour systems as development candidates requiring metallurgical validation before production."]
- ];
- uses.forEach(([a,d])=>{if(y>272){newPage("Use Cases");section("Use cases");}doc.setFont("helvetica","bold");doc.setFontSize(7.8);doc.setTextColor(25,25,25);doc.text(a,M,y);doc.setFont("helvetica","normal");doc.setTextColor(75,75,75);doc.text(doc.splitTextToSize(clean(d),C-43),M+43,y);y+=10;});
+  ["Melting / casting","Approved furnace, suitable melt/charge hardware, mould/fixture appropriate to the alloy, ventilation and housekeeping controls."],
+  ["Forming","Rolling, drawing or forging equipment matched to product geometry with dimensional checks between stages."],
+  ["Finishing","Surface-preparation, polishing/brushing and, where applicable, approved plating equipment matched to the substrate."],
+  ["Inspection","Suitable assay/analytical capability, calibrated measurement tools, magnification/lighting and documented acceptance criteria."]
+ ].forEach(([a,d])=>{doc.setFont("helvetica","bold");doc.setFontSize(7.8);doc.setTextColor(25,25,25);doc.text(a,M,y);doc.setFont("helvetica","normal");doc.setTextColor(75,75,75);doc.text(doc.splitTextToSize(d,C-45),M+45,y);y+=10});
+ section("14 · Use-case finishing map");
+ tableRows(["PRODUCT","PRIORITY","FINAL-FINISH FOCUS"],[
+  ["Jewellery / ring","Wear + comfort","Geometry, edge comfort, secure setting, uniform polish/satin and verified purity."],
+  ["Chain","Flexibility + surface","Smooth joints, consistent polish, no sharp links and controlled work hardening."],
+  ["Sheet / wire","Dimensional consistency","Surface uniformity, gauge control and validated forming/annealing sequence."],
+  ["Cast bar","Weight + identity","Clean surface, readable markings, controlled dimensions, assay and traceability."],
+  ["Minted-style bar","Detail + repeatability","Die/tool condition, field cleanliness, edge consistency, marks and packaging."],
+ ],[34,48,92]);
  if(y>250)newPage("Validation");
- section("Production validation");
- const note="Design-screening output only. This report does not prescribe a universal melt temperature, hold time, cooling rate, deformation schedule or chemical bath. Validate exact chemistry, melting behaviour, mechanical properties, colour tolerance, safety and production process with certified alloy data before manufacture.";
- doc.setFont("helvetica","normal");doc.setFontSize(8);doc.setTextColor(65,65,65);doc.text(doc.splitTextToSize(note,C),M,y);y+=25;
- const checklist=["Composition verified","Supplier / lab data checked","Colour tested against target","Mechanical properties tested","Process parameters validated","Final appearance inspected"];
- checklist.forEach((t,i)=>{const yy=y+i*7;doc.rect(M,yy-3,4,4);doc.setFontSize(8);doc.text(t,M+7,yy)});
+ section("15 · Final production acceptance");
+ ["Composition matches approved specification and applicable legal/market grade.","Critical dimensions and final weight meet the product drawing/specification.","Visible surface meets the agreed inspection standard; manufacturing defects are not hidden by cosmetic treatment.","Finish is uniform and the visual master/sample has been matched.","Assay/hallmark/identification records are complete for the product category.","Serial, batch, packaging and documentation reconcile one-to-one.","Responsible QC person has signed the release record."].forEach(bullet);
+ section("16 · Sources / verification");
+ const sources=[
+  "BIS Hallmarking FAQ and guidance — bis.gov.in — accessed for current India hallmark/HUID and gold standards notes.",
+  "BIS Mandatory Hallmarking Order — bis.gov.in — check the latest amendments and district/category applicability before sale.",
+  "LBMA Good Delivery Rules — Technical Specifications — lbma.org.uk — current professional-market gold bar specifications and marking/surface guidance."
+ ];
+ sources.forEach(bullet);
+ paragraph("Important: Standards and legal requirements can change. This report is a manufacturing/QC planning aid, not a legal certificate, assay certificate or universal metallurgical recipe. Use the current applicable standard, accredited laboratory/refiner requirements and product specification for the actual production release.");
  footer();
- doc.save("auromix-report.pdf");
+ doc.save("auromix-premium-product-report.pdf");
 }
 $("export").onclick=exportPDF;
 render();
